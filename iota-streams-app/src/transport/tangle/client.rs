@@ -321,27 +321,31 @@ fn handle_client_result<T>(result: iota_client::Result<T>) -> Result<T> {
 
 async fn get_bundles(client: &iota_client::Client, tx_address: Address, tx_tag: Tag) -> Result<Vec<Transaction>> {
     let find_bundles = handle_client_result(
-        client.find_transactions()
+        Ok(client.find_transactions()
             .tags(&vec![tx_tag][..])
             .addresses(&vec![tx_address][..])
             .send()
-            .await,
+            .await
+            .unwrap()
+        )
     )?;
     try_or!(!find_bundles.hashes.is_empty(), HashNotFound)?;
 
-    let get_resp = handle_client_result(client.get_trytes(&find_bundles.hashes).await)?;
+    let get_resp = handle_client_result(Ok(client.get_trytes(&find_bundles.hashes).await.unwrap()))?;
     try_or!(!get_resp.trytes.is_empty(), TransactionContentsNotFound)?;
     Ok(get_resp.trytes)
 }
 
 async fn send_trytes(client: &iota_client::Client, opt: &SendTrytesOptions, txs: Vec<Transaction>) -> Result<Vec<Transaction>> {
     let attached_txs = handle_client_result(
-        client.send_trytes()
+        Ok(client.send_trytes()
             .min_weight_magnitude(opt.min_weight_magnitude)
             .depth(opt.depth)
             .trytes(txs)
             .send()
-            .await,
+            .await
+            .unwrap()
+        )
     )?;
     Ok(attached_txs)
 }

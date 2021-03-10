@@ -1,9 +1,11 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-//#![no_std]
+#![no_std]
 
-use iota_streams_core::Result;
+//use iota_streams_core::Result;
 use dotenv;
+
+#[cfg(feature = "std")]
 use std::env;
 
 use rand::Rng;
@@ -14,7 +16,11 @@ use iota_streams::{
         tangle::client::{SendTrytesOptions, Client, },
     },
     app_channels::api::tangle::Transport,
-    core::prelude::{ String, Rc, },
+    core::{
+        prelude::{ String, Rc, ToString },
+        Result,
+        println
+    },
 };
 
 use core::cell::RefCell;
@@ -81,8 +87,7 @@ fn main_client() {
     };
 
     // Parse env vars with a fallback
-    let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
-    let node_mwm: u8 = env::var("MWM").map(|s| s.parse().unwrap_or(14)).unwrap_or(14);
+    let (node_url, node_mwm) = get_env_vars().unwrap();
 
     // Fails at unwrap when the url isnt working
     // TODO: Fail gracefully
@@ -111,6 +116,21 @@ fn main_client() {
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }
+
+#[cfg(not(feature = "std"))]
+fn get_env_vars() -> Result<(String, u8)> {
+    let node_url = "https://nodes.devnet.iota.org:443".to_string();
+    let node_mwm = 9_u8;
+    Ok((node_url, node_mwm))
+}
+
+#[cfg(feature = "std")]
+fn get_env_vars() -> Result<(String, u8)> {
+    let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
+    let node_mwm: u8 = env::var("MWM").map(|s| s.parse().unwrap_or(14)).unwrap_or(14);
+    Ok((node_url, node_mwm))
+}
+
 
 fn main() {
     //main_pure();

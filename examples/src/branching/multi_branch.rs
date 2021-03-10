@@ -11,19 +11,22 @@ use iota_streams::{
         },
     },
     core::{
-        prelude::Rc,
+        prelude::{
+            Rc,
+            String,
+            ToString
+        },
         print,
         println,
         try_or,
         LOCATION_LOG,
-        Errors::*
+        Errors::*,
+        Result
     },
     ddml::types::*,
 };
 
 use core::cell::RefCell;
-
-use iota_streams_core::Result;
 
 use super::utils;
 

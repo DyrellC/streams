@@ -10,6 +10,7 @@ use iota_streams::{
         },
     },
 };
+use crate::println;
 
 pub fn s_fetch_next_messages<T: Transport>(subscriber: &mut Subscriber<T>)
 {
