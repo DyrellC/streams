@@ -84,7 +84,7 @@ fn main_client() {
     };
 
     // Parse env vars with a fallback
-    let node_url = env::var("URL").unwrap_or("http://localhost:14265".to_string());
+    let node_url = env::var("URL").unwrap_or("http://68.183.204.5:14265".to_string());
 
     let mut send_opt = SendOptions::default();
 

@@ -213,10 +213,9 @@ dependencies = [
 [[package]]
 name = "bee-crypto"
 version = "0.2.1-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e9be03c91825c26fa8c93613362341df1136da233c8462ec2c59fe1be81c237"
+source = "git+https://github.com/iotaledger/bee.git?branch=dev#3284e936d309d6afd8f537237795f320a3932c05"
 dependencies = [
- "bee-ternary 0.4.2-alpha (registry+https://github.com/rust-lang/crates.io-index)",
+ "bee-ternary 0.4.2-alpha (git+https://github.com/iotaledger/bee.git?branch=dev)",
  "byteorder",
  "lazy_static",
  "thiserror",
@@ -226,9 +225,10 @@ dependencies = [
 [[package]]
 name = "bee-crypto"
 version = "0.2.1-alpha"
-source = "git+https://github.com/iotaledger/bee.git?branch=dev#3284e936d309d6afd8f537237795f320a3932c05"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e9be03c91825c26fa8c93613362341df1136da233c8462ec2c59fe1be81c237"
 dependencies = [
- "bee-ternary 0.4.2-alpha (git+https://github.com/iotaledger/bee.git?branch=dev)",
+ "bee-ternary 0.4.2-alpha (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder",
  "lazy_static",
  "thiserror",
@@ -313,21 +313,21 @@ dependencies = [
 [[package]]
 name = "bee-ternary"
 version = "0.4.2-alpha"
+source = "git+https://github.com/iotaledger/bee.git?branch=dev#3284e936d309d6afd8f537237795f320a3932c05"
+dependencies = [
+ "autocfg",
+ "num-traits",
+]
+
+[[package]]
+name = "bee-ternary"
+version = "0.4.2-alpha"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ec0259535d34f1bfd0c41bf5a6f0e3e33268dc9433e2ac3707e66715b51ce05"
 dependencies = [
  "autocfg",
  "num-traits",
  "serde",
-]
-
-[[package]]
-name = "bee-ternary"
-version = "0.4.2-alpha"
-source = "git+https://github.com/iotaledger/bee.git?branch=dev#3284e936d309d6afd8f537237795f320a3932c05"
-dependencies = [
- "autocfg",
- "num-traits",
 ]
 
 [[package]]
@@ -1209,7 +1209,7 @@ dependencies = [
 [[package]]
 name = "iota-client"
 version = "0.5.0-alpha.3"
-source = "git+https://github.com/iotaledger/iota.rs?branch=dev#66a1a59312060c58b2f7c07b99109a6245df3eca"
+source = "git+https://github.com/DyrellC/iota.rs?branch=fix-network-info-deadlock#9ac3a8eff5d74474b6a54d76c08bd8658a9dace0"
 dependencies = [
  "async-trait",
  "bee-common",
@@ -1229,6 +1229,7 @@ dependencies = [
  "tokio",
  "ureq",
  "url",
+ "zeroize",
 ]
 
 [[package]]
@@ -1240,6 +1241,15 @@ dependencies = [
  "blake2",
  "digest 0.9.0",
  "ed25519-zebra",
+]
+
+[[package]]
+name = "iota-crypto"
+version = "0.5.0"
+source = "git+https://github.com/iotaledger/crypto.rs?branch=dev#8b2177e0dab66af8b5511f0477e9dd1cc3a1a94d"
+dependencies = [
+ "blake2",
+ "digest 0.9.0",
 ]
 
 [[package]]
@@ -1257,15 +1267,6 @@ dependencies = [
  "serde",
  "sha2 0.9.3",
  "unicode-normalization",
-]
-
-[[package]]
-name = "iota-crypto"
-version = "0.5.0"
-source = "git+https://github.com/iotaledger/crypto.rs?branch=dev#8b2177e0dab66af8b5511f0477e9dd1cc3a1a94d"
-dependencies = [
- "blake2",
- "digest 0.9.0",
 ]
 
 [[package]]
