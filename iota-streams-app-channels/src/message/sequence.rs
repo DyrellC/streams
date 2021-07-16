@@ -27,7 +27,7 @@ use iota_streams_app::message::{
 
 use iota_streams_core::Result;
 
-use iota_streams_app::identifier::Identifier;
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::sponge::prp::PRP;
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{

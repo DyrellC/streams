@@ -1,31 +1,38 @@
 use iota_streams_app::{
-    identifier::Identifier,
     message::{
         HasLink as _,
         LinkGenerator,
     },
 };
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     err,
+    Errors::{
+        ChannelDuplication,
+        UnknownMsgType,
+        UserNotRegistered,
+    },
     prelude::Vec,
     prng,
     psk::{
         Psk,
         PskId,
     },
-    try_or,
-    Errors::{
-        ChannelDuplication,
-        UnknownMsgType,
-        UserNotRegistered,
-    },
     Result,
+    try_or,
 };
 
-use super::*;
 use crate::{
     api,
     message,
+};
+
+use super::*;
+use iota_streams_app::id::id::Identity;
+#[cfg(feature = "use-did")]
+use iota_streams_app::identity::{
+    account::Account,
+    iota::Client as DIDClient,
 };
 
 type UserImp = api::user::User<DefaultF, Address, LinkGen, LinkStore, KeyStore>;
@@ -48,9 +55,11 @@ impl<Trans> User<Trans> {
     /// * `transport` - Transport object used for sending and receiving
     pub fn new(seed: &str, channel_type: ChannelType, transport: Trans) -> Self {
         let nonce = "TANGLEUSERNONCE".as_bytes().to_vec();
+        let prng = prng::from_seed::<DefaultF>("IOTA Streams Channels user sig keypair", seed);
+        let id = Identity::new(nonce, prng);
+
         let user = UserImp::gen(
-            prng::from_seed("IOTA Streams Channels user sig keypair", seed),
-            nonce,
+            id,
             channel_type,
             ENCODING.as_bytes().to_vec(),
             PAYLOAD_LENGTH,
@@ -81,7 +90,7 @@ impl<Trans> User<Trans> {
 
     /// Fetch the user ed25519 public key
     pub fn get_pk(&self) -> &PublicKey {
-        &self.user.sig_kp.public
+        &self.user.id.get_sig_kp().public
     }
 
     pub fn is_registered(&self) -> bool {
@@ -168,6 +177,26 @@ impl<Trans> User<Trans> {
             Cursor::new_at(&unwrapped.body.ref_link, 0, unwrapped.body.seq_num.0 as u32),
         );
         Ok(msg_link)
+    }
+}
+
+
+#[cfg(feature = "use-did")]
+impl<Trans: Transport + Clone> User<Trans> {
+    pub async fn new_with_did(account: &Account, channel_type: ChannelType, transport: Trans, url: &str) -> Result<Self> {
+        println!("Making client");
+        let client = DIDClient::builder().node(url)?.build().await?;
+        println!("Making Id");
+        let id = Identity::new_from_did(account, &client).await?;
+
+        println!("Making user");
+        let user = UserImp::gen(
+            id,
+            channel_type,
+            ENCODING.as_bytes().to_vec(),
+            PAYLOAD_LENGTH,
+        );
+        Ok(Self { user, transport})
     }
 }
 

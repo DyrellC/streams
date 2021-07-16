@@ -10,7 +10,7 @@ use crate::api::tangle::{
     User,
 };
 
-use iota_streams_app::identifier::Identifier;
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     panic_if_not,
     prelude::{
@@ -23,6 +23,8 @@ use iota_streams_core::{
     },
 };
 use iota_streams_core_edsig::signature::ed25519;
+#[cfg(feature = "use-did")]
+use iota_streams_app::identity::account::Account;
 
 /// Author Object. Contains User API.
 pub struct Author<Trans> {
@@ -137,6 +139,22 @@ impl<Trans> Author<Trans> {
         User::<Trans>::import(bytes, 0, pwd, tsp).map(|user| Self { user })
     }
 }
+
+#[cfg(feature = "use-did")]
+impl<Trans: Transport + Clone> Author<Trans> {
+    pub async fn new_with_did(
+        account: &Account,
+        channel_type: ChannelType,
+        transport: Trans,
+        url: &str,
+    ) -> Result<Self> {
+        let mut user = User::new_with_did(account, channel_type, transport, url).await?;
+        let channel_idx = 0_u64;
+        let _ = user.user.create_channel(channel_idx);
+        Ok(Self { user })
+    }
+}
+
 
 #[cfg(not(feature = "async"))]
 impl<Trans: Transport + Clone> Author<Trans> {
@@ -489,7 +507,7 @@ impl<Trans: Clone> fmt::Display for Author<Trans> {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.user.user.sig_kp.public.as_bytes()),
+            hex::encode(self.user.user.id.get_sig_kp().public.as_bytes()),
             self.user.user.key_store
         )
     }

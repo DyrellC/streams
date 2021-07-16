@@ -34,7 +34,7 @@ exclude = [
 ]
 
 [features]
-default = ["std", "tangle", "sync-client"]
+default = ["std", "tangle", "sync-client", "use-did"]
 # Enable `std` feature in dependencies
 std = ["iota-streams-core/std", "iota-streams-core-edsig/std", "iota-streams-ddml/std", "iota-streams-app/std", "iota-streams-app-channels/std"]
 async = ["iota-streams-app/async", "iota-streams-app-channels/async"]
@@ -43,6 +43,7 @@ sync-client = ["iota-streams-app/sync-client", "iota-streams-app-channels/sync-c
 async-client = ["iota-streams-app/async-client", "iota-streams-app-channels/async-client"]
 wasm-client = ["iota-streams-app/wasm-client", "iota-streams-app-channels/wasm-client"]
 err-location-log = ["iota-streams-core/err-location-log"]
+use-did = ["iota-streams-app/use-did", "iota-streams-app-channels/use-did"]
 
 [dependencies]
 iota-streams-core = { version = "0.3.0", path = "iota-streams-core", default-features = false }

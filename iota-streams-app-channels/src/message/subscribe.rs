@@ -25,7 +25,7 @@
 //! # Fields:
 //!
 //! * `msgid` -- link to the `Announce` message containing channel owner's trusted Ed25519 public key.
-//! This key is used to protect subscriber's identity by encrypting subscriber's Ed25519 public key.
+//! This key is used to protect subscriber's id by encrypting subscriber's Ed25519 public key.
 //!
 //! * `unsubscribe_key` -- encapsulated secret key that serves as encryption key and as password to unsubscribe from the
 //!   channel.

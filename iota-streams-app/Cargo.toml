@@ -21,6 +21,7 @@ tangle = ["chrono"]
 sync-client = ["num_cpus", "iota-client/sync", "tangle", "std"]
 async-client = ["num_cpus", "iota-client/default", "tangle", "async", "std"]
 wasm-client = ["iota-client/wasm", "chrono/wasmbind", "tangle", "async", "std"]
+use-did = ["tangle", "identity", "tokio"]
 
 [lib]
 name = "iota_streams_app"
@@ -41,7 +42,9 @@ async-trait = { version = "0.1", optional = true }
 atomic_refcell = { version = "0.1.6", optional = true }
 
 # Dependencies for "client" feature
-iota-client = { git = "https://github.com/iotaledger/iota.rs", branch = "dev", default-features = false, optional = true }
+iota-client = { git = "https://github.com/iotaledger/iota.rs", rev = "0a011ec", default-features = false, optional = true }
+identity = { git = "https://github.com/iotaledger/identity.rs", branch = "dev", features = ["account"], optional = true }
+tokio = {version = "1.1", optional = true }
 
 num_cpus = { version = "1.10", optional = true }
 

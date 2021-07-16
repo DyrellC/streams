@@ -7,17 +7,18 @@ use core::{
 };
 
 use iota_streams_app::{
-    identifier::Identifier,
     message::{
+        *,
         hdf::{
             FLAG_BRANCHING_MASK,
             HDF,
         },
-        *,
     },
 };
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     err,
+    Errors::*,
     prelude::{
         string::ToString,
         typenum::U32,
@@ -30,13 +31,12 @@ use iota_streams_core::{
         Psk,
         PskId,
     },
+    Result,
     sponge::prp::{
         Inner,
         PRP,
     },
     try_or,
-    Errors::*,
-    Result,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,
@@ -54,11 +54,12 @@ use iota_streams_ddml::{
 
 use crate::{
     api::{
-        key_store::*,
         ChannelType,
+        key_store::*,
     },
     message::*,
 };
+use iota_streams_app::id::id::Identity;
 
 const ANN_MESSAGE_NUM: u32 = 0;
 const SUB_MESSAGE_NUM: u32 = 0;
@@ -129,12 +130,15 @@ where
     // PRNG object used for Ed25519, X25519, Spongos key generation, etc.
     // pub(crate) prng: prng::Prng<F>,
     _phantom: core::marker::PhantomData<F>,
-
+/*
     /// Own Ed25519 private key.
     pub(crate) sig_kp: ed25519::Keypair,
 
     /// Own x25519 key pair corresponding to Ed25519 keypair.
     pub(crate) ke_kp: (x25519::StaticSecret, x25519::PublicKey),
+*/
+    /// Identity of streams user (can be a DID or simple key pairing)
+    pub(crate) id: Identity,
 
     /// Users' trusted public keys together with additional sequencing info: (msgid, seq_no).
     pub(crate) key_store: Keys,
@@ -171,17 +175,11 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     fn default() -> Self {
-        let sig_kp = ed25519::Keypair {
-            secret: ed25519::SecretKey::from_bytes(&[0; ed25519::SECRET_KEY_LENGTH]).unwrap(),
-            public: ed25519::PublicKey::default(),
-        };
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
+        let id = Identity::default();
 
         Self {
             _phantom: core::marker::PhantomData,
-            sig_kp,
-            ke_kp,
-
+            id,
             key_store: Keys::default(),
             author_sig_pk: None,
             link_gen: LG::default(),
@@ -207,15 +205,11 @@ where
 {
     /// Create a new User and generate Ed25519 key pair and corresponding X25519 key pair.
     pub fn gen(
-        prng: prng::Prng<F>,
-        nonce: Vec<u8>,
+        id: Identity,
         channel_type: ChannelType,
         message_encoding: Vec<u8>,
         uniform_payload_length: usize,
     ) -> Self {
-        let sig_kp = ed25519::Keypair::generate(&mut prng::Rng::new(prng, nonce));
-        let ke_kp = x25519::keypair_from_ed25519(&sig_kp);
-
         let flags: u8 = match channel_type {
             ChannelType::SingleBranch => 0,
             ChannelType::MultiBranch => 1,
@@ -224,8 +218,7 @@ where
 
         Self {
             _phantom: core::marker::PhantomData,
-            sig_kp,
-            ke_kp,
+            id,
 
             key_store: Keys::default(),
             author_sig_pk: None,
@@ -246,13 +239,13 @@ where
                 self.appinst.as_ref().unwrap().base().to_string()
             ));
         }
-        self.link_gen.gen(&self.sig_kp.public, channel_idx);
+        self.link_gen.gen(&self.id.get_sig_kp().public, channel_idx);
         let appinst = self.link_gen.get();
 
-        let identifier = self.sig_kp.public.into();
+        let identifier = self.id.get_sig_kp().public.into();
         self.key_store
             .insert_cursor(identifier, Cursor::new_at(appinst.rel().clone(), 0, 2_u32))?;
-        self.author_sig_pk = Some(self.sig_kp.public);
+        self.author_sig_pk = Some(self.id.get_sig_kp().public);
         self.appinst = Some(appinst);
         Ok(())
     }
@@ -274,8 +267,8 @@ where
             .with_content_type(ANNOUNCE)?
             .with_payload_length(1)?
             .with_seq_num(ANN_MESSAGE_NUM)
-            .with_identifier(&self.sig_kp.public.into());
-        let content = announce::ContentWrap::new(&self.sig_kp, self.flags);
+            .with_identifier(&self.id.get_sig_kp().public.into());
+        let content = announce::ContentWrap::new(&self.id.get_sig_kp(), self.flags);
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
     }
 
@@ -328,7 +321,7 @@ where
         self.key_store
             .insert_cursor(Identifier::EdPubKey(content.sig_pk.into()), cursor.clone())?;
         self.key_store
-            .insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
+            .insert_cursor(Identifier::EdPubKey(self.id.get_sig_kp().public.into()), cursor)?;
         // Reset link_gen
         self.link_gen.reset(link.clone());
         self.appinst = Some(link);
@@ -346,7 +339,7 @@ where
             let identifier = Identifier::EdPubKey(ed25519::PublicKeyWrap(*author_sig_pk));
             if let Some(author_ke_pk) = self.key_store.get_ke_pk(&identifier) {
                 let msg_link = self.link_gen.link_from(
-                    &self.sig_kp.public.into(),
+                    &self.id.get_sig_kp().public.into(),
                     Cursor::new_at(link_to.rel(), 0, SUB_MESSAGE_NUM),
                 );
                 let header = HDF::new(msg_link)
@@ -354,12 +347,12 @@ where
                     .with_content_type(SUBSCRIBE)?
                     .with_payload_length(1)?
                     .with_seq_num(SUB_MESSAGE_NUM)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.id.get_sig_kp().public.into());
                 let unsubscribe_key = NBytes::from(prng::random_key());
                 let content = subscribe::ContentWrap {
                     link: link_to.rel(),
                     unsubscribe_key,
-                    subscriber_sig_kp: &self.sig_kp,
+                    subscriber_sig_kp: &self.id.get_sig_kp(),
                     author_ke_pk,
                     _phantom: core::marker::PhantomData,
                 };
@@ -382,7 +375,7 @@ where
         preparsed: PreparsedMessage<'a, F, Link>,
     ) -> Result<UnwrappedMessage<F, Link, subscribe::ContentUnwrap<F, Link>>> {
         self.ensure_appinst(&preparsed)?;
-        let content = subscribe::ContentUnwrap::new(&self.ke_kp.0)?;
+        let content = subscribe::ContentUnwrap::new(&self.id.get_ke_kp().0)?;
         preparsed.unwrap(&*self.link_store.borrow(), content)
     }
 
@@ -425,7 +418,7 @@ where
             nonce,
             key,
             keys: ke_pks,
-            sig_kp: &self.sig_kp,
+            sig_kp: &self.id.get_sig_kp(),
             _phantom: core::marker::PhantomData,
         };
         Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -443,13 +436,13 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(&self.id.get_sig_kp().public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.id.get_sig_kp().public.into());
                 let keys = self.key_store.filter(pks);
                 self.do_prepare_keyload(header, link_to.rel(), keys.into_iter())
             }
@@ -467,13 +460,13 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(&self.id.get_sig_kp().public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = hdf::HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(KEYLOAD)?
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.id.get_sig_kp().public.into());
                 let ike_pks = self.key_store.keys();
                 self.do_prepare_keyload(header, link_to.rel(), ike_pks.into_iter())
             }
@@ -505,8 +498,8 @@ where
     fn lookup_ke_sk<'b>(&'b self, ke_pk: &Identifier) -> Option<&'b x25519::StaticSecret> {
         match ke_pk.get_pk() {
             Some(pk) => {
-                if &self.sig_kp.public == pk {
-                    Some(&self.ke_kp.0)
+                if &self.id.get_sig_kp().public == pk {
+                    Some(&self.id.get_ke_kp().0)
                 } else {
                     None
                 }
@@ -603,18 +596,18 @@ where
             Some(seq_no) => {
                 let msg_link = self
                     .link_gen
-                    .link_from(&self.sig_kp.public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
+                    .link_from(&self.id.get_sig_kp().public.into(), Cursor::new_at(link_to.rel(), 0, seq_no));
                 let header = HDF::new(msg_link)
                     .with_previous_msg_link(Bytes(link_to.to_bytes()))
                     .with_content_type(SIGNED_PACKET)?
                     .with_payload_length(1)?
                     .with_seq_num(seq_no)
-                    .with_identifier(&self.sig_kp.public.into());
+                    .with_identifier(&self.id.get_sig_kp().public.into());
                 let content = signed_packet::ContentWrap {
                     link: link_to.rel(),
                     public_payload,
                     masked_payload,
-                    sig_kp: &self.sig_kp,
+                    sig_kp: &self.id.get_sig_kp(),
                     _phantom: core::marker::PhantomData,
                 };
                 Ok(PreparedMessage::new(self.link_store.borrow(), header, content))
@@ -702,7 +695,7 @@ where
                 None => err(MessageBuildFailure),
             }
         } else {
-            Ok(self.sig_kp.public.into())
+            Ok(self.id.get_sig_kp().public.into())
         }
     }
 
@@ -806,7 +799,7 @@ where
                     Ok(WrappedSequence::new().with_cursor(cursor).with_wrapped(wrapped))
                 } else {
                     let msg_link = self.link_gen.link_from(
-                        &self.sig_kp.public.into(),
+                        &self.id.get_sig_kp().public.into(),
                         Cursor::new_at(&ref_link.clone(), 0, cursor.seq_no),
                     );
 
@@ -831,7 +824,7 @@ where
                 cursor.next_seq();
                 wrapped.commit(self.link_store.borrow_mut(), info)?;
                 self.key_store
-                    .insert_cursor(Identifier::EdPubKey(self.sig_kp.public.into()), cursor)?;
+                    .insert_cursor(Identifier::EdPubKey(self.id.get_sig_kp().public.into()), cursor)?;
                 Ok(Some(link))
             }
             None => {
@@ -880,7 +873,7 @@ where
     // TODO: own seq_no should be stored outside of pk_store to avoid lookup and Option
     pub fn get_seq_no(&self) -> Option<u32> {
         self.key_store
-            .get(&Identifier::EdPubKey(self.sig_kp.public.into()))
+            .get(&Identifier::EdPubKey(self.id.get_sig_kp().public.into()))
             .map(|cursor| cursor.seq_no)
     }
 
@@ -947,7 +940,7 @@ where
     pub fn gen_next_msg_ids(&self, branching: bool) -> Vec<(Identifier, Cursor<Link>)> {
         let mut ids = Vec::new();
 
-        // TODO: Do the same for self.sig_kp.public
+        // TODO: Do the same for self.id.get_sig_kp().public
         for pk_info in self.key_store.iter() {
             Self::gen_next_msg_id(&mut ids, &self.link_gen, pk_info, branching);
         }
@@ -967,7 +960,7 @@ where
     pub fn store_state_for_all(&mut self, link: <Link as HasLink>::Rel, seq_no: u32) -> Result<()> {
         if &seq_no > self.get_seq_no().as_ref().unwrap_or(&0) {
             self.key_store.insert_cursor(
-                Identifier::EdPubKey(self.sig_kp.public.into()),
+                Identifier::EdPubKey(self.id.get_sig_kp().public.into()),
                 Cursor::new_at(link.clone(), 0, seq_no),
             )?;
             for (_pk, cursor) in self.key_store.iter_mut() {
@@ -1010,7 +1003,7 @@ where
     Keys: KeyStore<Cursor<<Link as HasLink>::Rel>, F>,
 {
     fn sizeof<'c>(&self, ctx: &'c mut sizeof::Context<F>) -> Result<&'c mut sizeof::Context<F>> {
-        ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(&self.id.get_sig_kp().secret.as_bytes()[..]))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1072,7 +1065,7 @@ where
         _store: &Store,
         ctx: &'c mut wrap::Context<F, OS>,
     ) -> Result<&'c mut wrap::Context<F, OS>> {
-        ctx.mask(<&NBytes<U32>>::from(&self.sig_kp.secret.as_bytes()[..]))?
+        ctx.mask(<&NBytes<U32>>::from(&self.id.get_sig_kp().secret.as_bytes()[..]))?
             .absorb(Uint8(self.flags))?
             .absorb(<&Bytes>::from(&self.message_encoding))?
             .absorb(Uint64(self.uniform_payload_length as u64))?;
@@ -1139,7 +1132,7 @@ where
         let mut message_encoding = Bytes::new();
         let mut uniform_payload_length = Uint64(0);
         ctx
-            //.absorb(&self.sig_kp.public)
+            //.absorb(&self.id.get_sig_kp().public)
             .mask(&mut sig_sk_bytes)?
             .absorb(&mut flags)?
             .absorb(&mut message_encoding)?
@@ -1200,11 +1193,11 @@ where
 
         let sig_sk = ed25519::SecretKey::from_bytes(sig_sk_bytes.as_ref()).unwrap();
         let sig_pk = ed25519::PublicKey::from(&sig_sk);
-        self.sig_kp = ed25519::Keypair {
+        let id = Identity::from(ed25519::Keypair {
             secret: sig_sk,
             public: sig_pk,
-        };
-        self.ke_kp = x25519::keypair_from_ed25519(&self.sig_kp);
+        });
+        self.id = id;
         self.link_store = RefCell::new(link_store);
         self.key_store = key_store;
         self.author_sig_pk = author_sig_pk;

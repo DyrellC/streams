@@ -144,6 +144,10 @@ pub enum Errors {
     ChannelDuplication,
     /// Subscriber already has a psk stored, cannot add another
     SinglePskAllowance,
+    /// DID Document failed to update method
+    DocumentUpdateFailure,
+    /// Failed to retrieve an Identity Id from account
+    DIDRetrievalFailure,
 
     //////////
     // User Recovery

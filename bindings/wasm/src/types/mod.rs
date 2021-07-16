@@ -2,8 +2,14 @@ use core::{
     cell::RefCell,
     convert::TryFrom,
 };
+
+use js_sys::Array;
+use wasm_bindgen::prelude::*;
+
 use iota_streams::{
     app::transport::tangle::client::{
+        Client,
+        Details as ApiDetails,
         iota_client::{
             bee_rest_api::types::{
                 dtos::LedgerInclusionStateDto,
@@ -11,8 +17,6 @@ use iota_streams::{
             },
             MilestoneResponse as ApiMilestoneResponse,
         },
-        Client,
-        Details as ApiDetails,
         SendOptions as ApiSendOptions,
     },
     app_channels::api::tangle::{
@@ -35,13 +39,10 @@ use iota_streams::{
     },
     ddml::types::hex,
 };
-use wasm_bindgen::prelude::*;
-
 use iota_streams::{
-    app::identifier::Identifier,
     core::psk::PskId,
 };
-use js_sys::Array;
+use iota_streams::app::id::identifier::Identifier;
 
 pub type Result<T> = core::result::Result<T, JsValue>;
 pub fn to_result<T, E: ToString>(r: core::result::Result<T, E>) -> Result<T> {

@@ -25,9 +25,11 @@ use iota_streams::{
 use core::cell::RefCell;
 
 use super::utils;
+use iota_streams::app::identity::account::Account;
 
-pub fn example<T: Transport>(transport: Rc<RefCell<T>>, channel_impl: ChannelType, seed: &str) -> Result<()> {
-    let mut author = Author::new(seed, channel_impl, transport.clone());
+pub async fn example<T: Transport>(account: &Account, transport: Rc<RefCell<T>>, channel_impl: ChannelType, seed: &str) -> Result<()> {
+    println!("Making author");
+    let mut author = Author::new_with_did(account, channel_impl, transport.clone(), "http://68.183.204.5:14265").await?;
     println!("Author multi branching?: {}", author.is_multi_branching());
 
     let mut subscriberA = Subscriber::new("SUBSCRIBERA9SEED", transport.clone());

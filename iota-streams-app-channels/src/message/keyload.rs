@@ -51,24 +51,25 @@
 //!     via `SignedPacket`.
 
 use core::convert::TryFrom;
+
 use iota_streams_app::{
-    identifier::Identifier,
     message::{
         self,
         *,
     },
 };
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     prelude::{
         typenum::Unsigned as _,
         Vec,
     },
     psk,
+    Result,
     sponge::{
         prp::PRP,
         spongos,
     },
-    Result,
 };
 use iota_streams_core_edsig::{
     key_exchange::x25519,

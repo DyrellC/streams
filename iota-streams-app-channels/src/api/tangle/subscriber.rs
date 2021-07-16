@@ -10,7 +10,7 @@ use crate::api::tangle::{
     User,
 };
 
-use iota_streams_app::identifier::Identifier;
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     prelude::{
         String,
@@ -22,6 +22,8 @@ use iota_streams_core::{
     },
 };
 use iota_streams_core_edsig::signature::ed25519;
+#[cfg(feature = "use-did")]
+use iota_streams_app::identity::account::Account;
 
 /// Subscriber Object. Contains User API.
 pub struct Subscriber<T> {
@@ -143,6 +145,16 @@ impl<Trans> Subscriber<Trans> {
         User::<Trans>::import(bytes, 1, pwd, tsp).map(|user| Self { user })
     }
 }
+
+#[cfg(feature = "use-did")]
+impl<Trans: Transport + Clone> Subscriber <Trans> {
+    pub async fn new_with_did(account: &Account, transport: Trans, url: &str, ) -> Result<Self> {
+        let mut user = User::new_with_did(account, SingleBranch, transport, url).await?;
+        Ok(Self { user })
+    }
+}
+
+
 
 #[cfg(not(feature = "async"))]
 impl<Trans: Transport + Clone> Subscriber<Trans> {
@@ -455,7 +467,7 @@ impl<T: Transport + Clone> fmt::Display for Subscriber<T> {
         write!(
             f,
             "<{}>\n{}",
-            hex::encode(self.user.user.sig_kp.public.as_bytes()),
+            hex::encode(self.user.user.id.get_sig_kp().public.as_bytes()),
             self.user.user.key_store
         )
     }

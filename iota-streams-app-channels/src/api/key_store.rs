@@ -1,6 +1,6 @@
 use core::fmt;
 
-use iota_streams_app::identifier::Identifier;
+use iota_streams_app::id::identifier::Identifier;
 use iota_streams_core::{
     err,
     prelude::{
@@ -32,7 +32,7 @@ pub trait KeyStore<Info, F: PRP>: Default {
 }
 
 pub struct KeyMap<Info> {
-    /// Map from user identity -- ed25519 pk -- to
+    /// Map from user id -- ed25519 pk -- to
     /// a precalculated corresponding x25519 pk and some additional info.
     ke_pks: HashMap<Identifier, (x25519::PublicKey, Info)>,
     psks: HashMap<Identifier, (Option<Psk>, Info)>,

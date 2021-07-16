@@ -11,21 +11,23 @@ use core::{
     str::FromStr,
 };
 
-use iota_streams_core::Result;
+use cstr_core::CStr;
+use cty::c_char;
 
 use iota_streams_core::{
     crypto::hashes::{
         blake2b,
         Digest,
     },
+    Errors::BadHexFormat,
     prelude::{
+        Box,
+        String,
+        ToString,
         typenum::{
             U12,
             U40,
         },
-        Box,
-        String,
-        ToString,
         Vec,
     },
     sponge::{
@@ -33,9 +35,9 @@ use iota_streams_core::{
         spongos::Spongos,
     },
     wrapped_err,
-    Errors::BadHexFormat,
     WrappedError,
 };
+use iota_streams_core::Result;
 use iota_streams_core_edsig::signature::ed25519;
 use iota_streams_ddml::{
     command::*,
@@ -43,19 +45,16 @@ use iota_streams_ddml::{
     types::*,
 };
 
-use cstr_core::CStr;
-use cty::c_char;
-
 use crate::{
-    identifier::Identifier,
     message::{
         BinaryMessage,
         Cursor,
         HasLink,
-        LinkGenerator,
         LinkedMessage,
+        LinkGenerator,
     },
 };
+use crate::id::identifier::Identifier;
 
 /// Number of bytes to be placed in each transaction (Maximum HDF Payload Count)
 pub const PAYLOAD_BYTES: usize = 1090;

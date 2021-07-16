@@ -7,7 +7,11 @@ use std::env;
 use rand::Rng;
 
 use iota_streams::{
-    app::transport::tangle::client::Client,
+    app::{
+        identity::iota::Client as DIDClient,
+        id::make_account,
+        transport::tangle::client::Client
+    },
     app_channels::api::tangle::{
         ChannelType,
         Transport,
@@ -22,6 +26,7 @@ use iota_streams::{
 };
 
 use core::cell::RefCell;
+use iota_streams::app::identity::account::Account;
 
 mod branching;
 
@@ -34,9 +39,9 @@ fn run_recovery_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
     println!("#######################################");
 }
 
-fn run_single_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str) {
+async fn run_single_branch_test<T: Transport>(transport: Rc<RefCell<T>>, seed: &str, account: &Account) {
     println!("\tRunning Single Branch Test, seed: {}", seed);
-    match branching::single_branch::example(transport, ChannelType::SingleBranch, seed) {
+    match branching::single_branch::example(account, transport, ChannelType::SingleBranch, seed).await {
         Err(err) => println!("Error in Single Branch test: {:?}", err),
         Ok(_) => println!("\tSingle Branch Test completed!!"),
     }
@@ -58,7 +63,7 @@ fn run_main<T: Transport>(transport: T) -> Result<()> {
     let seed3: &str = "SEEDRECOVERY";
 
     let transport = Rc::new(RefCell::new(transport));
-    run_single_branch_test(transport.clone(), seed1);
+    //run_single_branch_test(transport.clone(), seed1);
     run_multi_branch_test(transport.clone(), seed2);
     run_recovery_test(transport, seed3);
 
@@ -75,7 +80,7 @@ fn main_pure() {
     println!("\n");
 
     let transport = Rc::new(RefCell::new(transport));
-    run_single_branch_test(transport.clone(), "PURESEEDA");
+    //run_single_branch_test(transport.clone(), "PURESEEDA");
     run_multi_branch_test(transport.clone(), "PURESEEDB");
     run_recovery_test(transport, "PURESEEDC");
     println!("Done running pure tests without accessing Tangle");
@@ -83,7 +88,7 @@ fn main_pure() {
 }
 
 #[allow(dead_code)]
-fn main_client() {
+async fn main_client() {
     // Load or .env file, log message if we failed
     if dotenv::dotenv().is_err() {
         println!(".env file not found; copy and rename example.env to \".env\"");
@@ -91,6 +96,13 @@ fn main_client() {
 
     // Parse env vars with a fallback
     let node_url = env::var("URL").unwrap_or_else(|_| "https://chrysalis-nodes.iota.org".to_string());
+
+    println!("#######################################");
+    println!("Making a DID Account for use in testing at node {}", &node_url);
+    println!("#######################################");
+
+    let did_client = DIDClient::builder().node("http://68.183.204.5:14265").unwrap().build().await.unwrap();
+    let account = make_account(did_client).await;
 
     let client = Client::new_from_url(&node_url);
 
@@ -112,9 +124,9 @@ fn main_client() {
     println!("#######################################");
     println!("\n");
 
-    run_single_branch_test(transport.clone(), seed1);
-    run_multi_branch_test(transport.clone(), seed2);
-    run_recovery_test(transport, seed3);
+    run_single_branch_test(transport.clone(), seed1, &account).await;
+    //run_multi_branch_test(transport.clone(), seed2);
+    //run_recovery_test(transport, seed3);
     println!("Done running tests accessing Tangle via node {}", &node_url);
     println!("#######################################");
 }
@@ -122,5 +134,5 @@ fn main_client() {
 #[tokio::main]
 async fn main() {
     // main_pure();
-    main_client();
+    main_client().await;
 }

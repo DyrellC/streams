@@ -1,3 +1,11 @@
+use core::ptr::{
+    null,
+    null_mut,
+};
+
+pub use auth::*;
+#[cfg(feature = "sync-client")]
+pub use client_details::*;
 use iota_streams::{
     app::{
         cstr_core::{
@@ -9,7 +17,6 @@ use iota_streams::{
             size_t,
             uint8_t,
         },
-        identifier::Identifier,
         message::Cursor,
         transport::tangle::{
             get_hash,
@@ -26,11 +33,8 @@ use iota_streams::{
         psk::PskId,
     },
 };
-
-use core::ptr::{
-    null,
-    null_mut,
-};
+use iota_streams::app::id::identifier::Identifier;
+pub use sub::*;
 
 pub fn get_channel_type(channel_type: uint8_t) -> ChannelType {
     match channel_type {
@@ -165,9 +169,9 @@ pub unsafe extern "C" fn transport_client_new_from_url(c_url: *const c_char) -> 
 
 #[cfg(feature = "sync-client")]
 mod client_details {
-    use super::*;
     use iota_streams::app::transport::{
         tangle::client::{
+            Details as ApiDetails,
             iota_client::{
                 bee_rest_api::types::{
                     dtos::LedgerInclusionStateDto,
@@ -175,10 +179,11 @@ mod client_details {
                 },
                 MilestoneResponse,
             },
-            Details as ApiDetails,
         },
         TransportDetails as _,
     };
+
+    use super::*;
 
     #[repr(C)]
     pub struct TransportDetails {
@@ -337,9 +342,6 @@ mod client_details {
         })
     }
 }
-
-#[cfg(feature = "sync-client")]
-pub use client_details::*;
 
 #[repr(C)]
 pub struct MessageLinks {
@@ -601,7 +603,4 @@ fn handle_message_contents(m: &UnwrappedMessage) -> PacketPayloads {
 }
 
 mod auth;
-pub use auth::*;
-
 mod sub;
-pub use sub::*;

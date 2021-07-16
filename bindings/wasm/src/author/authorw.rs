@@ -13,7 +13,7 @@ use js_sys::Array;
 
 use core::cell::RefCell;
 
-use iota_streams::app::identifier::Identifier;
+use iota_streams::app::id::identifier::Identifier;
 /// Streams imports
 use iota_streams::{
     app::transport::{
